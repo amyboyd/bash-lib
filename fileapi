@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+
+set -o nounset
+
+print_help() {
+    echo 'usage examples:'
+    echo '    fileapi [action] [file or URL]'
+    echo '    fileapi convert-image-to-other-formats "http://demo-api.fileapi.dev/fixtures/brain.jpg"'
+    echo '    fileapi detect-porn "http://demo-api.fileapi.dev/fixtures/porn-detector/test-is-porn.jpg"'
+    echo '    fileapi watermark-image "http://demo-api.fileapi.dev/fixtures/burgers.jpg" "http://demo-api.fileapi.dev/fixtures/brain.jpg" southeast'
+    echo '    fileapi --help'
+    exit 1
+}
+
+print_how_to_set_api_key() {
+    echo 'You must set your FileAPI.net API key in an environment variable called FILEAPI_KEY'
+    exit 1
+}
+
+print_if_verbose() {
+    if [[ $FILEAPI_VERBOSE == '1' ]]; then
+        echo $1
+    fi
+}
+
+require_second_argument_to_be_file_or_url() {
+    if [[ $# -lt '2' ]]; then
+        echo 'A file argument is required'
+        exit 1
+    fi
+}
+
+require_second_argument_to_be_url() {
+    if [[ $# -lt '2' ]]; then
+        echo 'A URL argument is required'
+        exit 1
+    fi
+
+    if [[ $2 == http* ]]; then
+        return
+    fi
+
+    echo 'A URL argument is required'
+    exit 1
+}
+
+make_api_request() {
+    if [[ -f $2 ]]; then
+        print_if_verbose "Sending file $2 to $1 with API key $FILEAPI_KEY"
+        curl $1 \
+            --header "X-FileApi-ApiKey: $FILEAPI_KEY" \
+            --request POST \
+            --silent --show-error \
+            --user-agent 'fileapi-bash-lib' \
+            -F "source=@$2" \
+            | python -mjson.tool
+    elif [[ $2 == http* ]]; then
+        print_if_verbose "Sending URL $2 to $1 with API key $FILEAPI_KEY"
+        curl $1 \
+            --header "X-FileApi-ApiKey: $FILEAPI_KEY" \
+            --request POST \
+            --silent --show-error \
+            --user-agent 'fileapi-bash-lib' \
+            -F "source=$2" \
+            | python -mjson.tool
+    else
+        echo "Unexpected type: $2"
+        exit 1
+    fi
+}
+
+if [[ $# == '0' ]]; then
+    print_help
+fi
+
+if [[ $FILEAPI_KEY == '' ]]; then
+    print_how_to_set_api_key
+fi
+
+# @todo - the API base URL needs to be prod when distributed.
+FILEAPI_BASE="${FILEAPI_BASE:-http://demo-api.fileapi.dev/v1/}"
+FILEAPI_VERBOSE="${FILEAPI_VERBOSE:-0}"
+
+ACTION=$1
+
+case "$ACTION" in
+    convert-image-to-other-formats|\
+            convert-video-to-other-formats|\
+            convert-gif-to-videos|\
+            convert-ttf-font-to-web-fonts|\
+            virus-scan|\
+            parse-pgn|\
+            detect-porn)
+        require_second_argument_to_be_file_or_url $*
+
+        URL="$FILEAPI_BASE""$1"
+        FILE=$2
+
+        make_api_request $URL $FILE
+        ;;
+
+    reduce-image-file-size)
+        require_second_argument_to_be_file_or_url $*
+
+        if [[ $# -lt '3' ]]; then
+            echo 'A maximum target file size is required (in bytes)'
+            exit 1
+        fi
+
+        TARGET_MAX_SIZE_IN_BYTES=$3
+        URL="$FILEAPI_BASE""$1"'?targetMaxSizeInBytes='$TARGET_MAX_SIZE_IN_BYTES
+        FILE=$2
+
+        make_api_request $URL $FILE
+        ;;
+
+    resize-image)
+        require_second_argument_to_be_file_or_url $*
+
+        if [[ $# -lt '4' ]]; then
+            echo 'A target width and height are required'
+            exit 1
+        fi
+
+        TARGET_WIDTH=$3
+        TARGET_HEIGHT=$4
+        URL="$FILEAPI_BASE""$1""?targetWidth=$TARGET_WIDTH&targetHeight=$TARGET_HEIGHT"
+        FILE=$2
+
+        make_api_request $URL $FILE
+        ;;
+
+    screenshot)
+        require_second_argument_to_be_url $*
+
+        URL="$FILEAPI_BASE""$1?url=$2"
+
+        curl $URL \
+            --header "X-FileApi-ApiKey: $FILEAPI_KEY" \
+            --request GET \
+            --silent --show-error \
+            --user-agent 'fileapi-bash-lib' \
+            | python -mjson.tool
+        ;;
+
+    watermark-image)
+        require_second_argument_to_be_url $*
+
+        if [[ $# -lt '4' ]]; then
+            echo 'A maximum target file size is required (in bytes)'
+            exit 1
+        fi
+
+        TO_WATERMARK=$2
+        WATERMARK=$3
+        CORNER=$4
+        URL="$FILEAPI_BASE""$1?watermark=$WATERMARK&corner=$CORNER"
+
+        if [[ $WATERMARK != http* ]]; then
+            echo 'The watermark must be a URL - local files are not supported'
+            exit 1
+        fi
+
+        make_api_request $URL $TO_WATERMARK
+        ;;
+
+    -h|--help)
+		print_help
+
+esac
