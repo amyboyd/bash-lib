@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+declare -a actions=(
+    '-h'
+    '--help'
+    'reduce-image-file-size tests/files/burgers.jpg 1024'
+    'reduce-image-file-size tests/files/burgers.jpg 30000'
+    'convert-image-to-other-formats tests/files/burgers.jpg'
+    'convert-video-to-other-formats tests/files/video.avi'
+    'detect-porn tests/files/brain.jpg'
+    'detect-porn tests/files/burgers.jpg'
+    'virus-scan tests/files/open-sans-bold-italic.ttf'
+    'watermark-image "http://demo-api.fileapi.dev/fixtures/burgers.jpg" "http://demo-api.fileapi.dev/fixtures/brain.jpg" southeast'
+    'screenshot "http://fileapi.dev/"'
+)
+
+for action in "${actions[@]}"; do
+    echo Running $action
+    eval "./fileapi $action"
+    echo
+done
