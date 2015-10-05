@@ -5,9 +5,9 @@ set -o nounset
 print_help() {
     echo 'usage examples:'
     echo '    fileapi [action] [file or URL]'
-    echo '    fileapi convert-image-to-other-formats "http://demo-api.fileapi.dev/fixtures/brain.jpg"'
-    echo '    fileapi detect-porn "http://demo-api.fileapi.dev/fixtures/porn-detector/test-is-porn.jpg"'
-    echo '    fileapi watermark-image "http://demo-api.fileapi.dev/fixtures/burgers.jpg" "http://demo-api.fileapi.dev/fixtures/brain.jpg" southeast'
+    echo '    fileapi convert-image-to-other-formats "http://api.fileapi.net/fixtures/brain.jpg"'
+    echo '    fileapi detect-porn "http://api.fileapi.net/fixtures/porn-detector/test-is-porn.jpg"'
+    echo '    fileapi watermark-image "http://api.fileapi.net/fixtures/burgers.jpg" "http://api.fileapi.net/fixtures/brain.jpg" southeast'
     echo '    fileapi --help'
     exit 1
 }
